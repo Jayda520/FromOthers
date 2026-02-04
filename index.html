@@ -1,53 +1,174 @@
-<script>
-  (function forceCursorVisible(){
-    // 1) 注入一段“最高优先级”的 CSS（含自定义SVG光标）
-    const style = document.createElement('style');
-    style.id = 'force-cursor-style';
-    style.textContent = `
-      /* ✅ 用自定义SVG光标，确保“可见” */
-      :root, html, body, body * {
-        cursor: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'>\
-<path d='M3 2 L3 26 L9 20 L14 30 L18 28 L13 18 L22 18 Z' fill='black' stroke='white' stroke-width='1'/>\
-</svg>") 1 1, auto !important;
-      }
-      input, textarea { cursor: text !important; }
-      button, select, option, label, a { cursor: pointer !important; }
-    `;
-    document.head.appendChild(style);
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emoji Social Attention (Web)</title>
 
-    // 2) 强制退出 pointer lock（如果某处启用了它，会导致“看不见/锁住指针”）
-    function unlockPointer(){
+  <!-- jsPsych 样式（本地） -->
+  <link rel="stylesheet" href="./lib/jspsych.css">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: rgb(128,128,128) !important;
+      overflow: hidden; /* 不要滚动条 */
+    }
+
+    /* ✅ 让 jsPsych 内容区域真正铺满屏幕（不同版本容器名略不同，全部兜底） */
+    #jspsych-target,
+    .jspsych-display-element,
+    .jspsych-content-wrapper,
+    .jspsych-content {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-sizing: border-box !important;
+    }
+
+    /* ✅ 居中显示（人口学表单页等） */
+    .jspsych-display-element,
+    .jspsych-content-wrapper,
+    .jspsych-content {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    /* ✅ instruction 图片完整显示（不裁切） */
+    .fit-fullscreen-img {
+      width: 100vw;
+      height: 100vh;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* ✅✅ 默认：强制显示鼠标（覆盖 cursor:none） */
+    body, body * { cursor: default !important; }
+    input, textarea { cursor: text !important; }
+    button, select, option, label, a { cursor: pointer !important; }
+
+    /* ✅ 出错页样式 */
+    .fatal-wrap{
+      width:100vw;height:100vh;
+      display:flex;align-items:center;justify-content:center;
+      padding:24px; box-sizing:border-box;
+      font-family:Consolas, Menlo, monospace;
+      color:#111;
+    }
+    .fatal-card{
+      width:min(1100px, 96vw);
+      background:#fff;
+      border-radius:16px;
+      padding:20px 22px;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+      white-space:pre-wrap;
+      line-height:1.5;
+      font-size:16px;
+    }
+    .fatal-title{
+      font-size:20px;
+      font-weight:700;
+      margin:0 0 10px 0;
+    }
+    .fatal-sub{
+      font-size:14px;
+      color:#444;
+      margin:0 0 12px 0;
+    }
+    .fatal-hr{ border:none;border-top:1px solid #ddd;margin:12px 0; }
+    .fatal-hint{ font-size:14px;color:#333; }
+    .fatal-code{ color:#b00020; }
+  </style>
+
+  <!-- jsPsych core（本地） -->
+  <script src="./lib/jspsych.js"></script>
+
+  <!-- plugins（本地） -->
+  <script src="./lib/plugin-preload.js"></script>
+  <script src="./lib/plugin-fullscreen.js"></script>
+  <script src="./lib/plugin-html-keyboard-response.js"></script>
+  <script src="./lib/plugin-image-keyboard-response.js"></script>
+  <script src="./lib/plugin-survey-html-form.js"></script>
+</head>
+
+<body>
+  <!-- ✅ 1) jsPsych 是否加载成功的硬检查 -->
+  <script>
+    (function(){
+      const ok = (typeof initJsPsych === "function");
+      if(!ok){
+        document.body.innerHTML =
+          '<div class="fatal-wrap"><div class="fatal-card">' +
+          '<div class="fatal-title">jsPsych core 未加载成功（initJsPsych 不存在）</div>' +
+          '<div class="fatal-sub">通常是路径/文件名/大小写问题：lib/jspsych.js 没有被正确加载。</div>' +
+          '<hr class="fatal-hr"/>' +
+          '请检查：\n' +
+          '1) 仓库里是否真的存在 ./lib/jspsych.js\n' +
+          '2) 文件名大小写是否一致（GitHub Pages 对大小写敏感）\n' +
+          '3) 浏览器 F12 → Network 里 jspsych.js 是否 200\n' +
+          '</div></div>';
+        throw new Error("initJsPsych is not defined. jsPsych core failed to load.");
+      }
+    })();
+  </script>
+
+  <!-- ✅ 2) 把任何 JS 报错直接显示在页面上（避免白屏无信息） -->
+  <script>
+    function showFatal(title, detail){
+      document.body.innerHTML = `
+        <div class="fatal-wrap">
+          <div class="fatal-card">
+            <div class="fatal-title">${title}</div>
+            <div class="fatal-sub">这就是导致你“白屏/无法开始实验”的直接原因。把下面红色报错发给我即可。</div>
+            <div class="fatal-code">${detail}</div>
+            <hr class="fatal-hr"/>
+            <div class="fatal-hint">
+              常见原因：<br>
+              - experiment.js 没加载到（路径/大小写错误）<br>
+              - 你的 experiment.js 用的是旧版 jsPsych 写法（jsPsych.init），但你现在是 v7+（initJsPsych）<br>
+              - 某个变量未定义/语法错误导致脚本中断<br>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    window.addEventListener('error', (e) => {
+      showFatal('JS 报错（导致白屏）', `${e.message}\n\n${e.filename}:${e.lineno}:${e.colno}`);
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      showFatal('Promise 未处理拒绝（导致白屏）', String(e.reason));
+    });
+  </script>
+
+  <!-- ✅ 3) 兜底：退出 pointer lock，确保鼠标不被锁/隐藏 -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
       try{
         if (document.pointerLockElement) document.exitPointerLock();
       }catch(e){}
-    }
-
-    // 3) 强制清理任何 hide-cursor 类/样式
-    function cleanHideCursor(){
+      // 清理可能存在的隐藏光标 class（如果你以前加过）
       document.documentElement.classList.remove('hide-cursor');
-      document.body && document.body.classList.remove('hide-cursor');
-      if (document.body) {
-        document.body.style.cursor = 'auto';
-      }
-    }
-
-    // 页面加载后立刻做一次
-    document.addEventListener('DOMContentLoaded', () => {
-      unlockPointer();
-      cleanHideCursor();
+      document.body.classList.remove('hide-cursor');
     });
 
-    // 进入/退出全屏时也再做一次
     document.addEventListener('fullscreenchange', () => {
-      unlockPointer();
-      cleanHideCursor();
+      try{
+        if (document.pointerLockElement) document.exitPointerLock();
+      }catch(e){}
+      document.documentElement.classList.remove('hide-cursor');
+      document.body.classList.remove('hide-cursor');
     });
+  </script>
 
-    // 终极兜底：周期性拉回（你确认OK后我再帮你改成更干净的版本）
-    setInterval(() => {
-      unlockPointer();
-      cleanHideCursor();
-    }, 100);
-  })();
-</script>
+  <!-- ✅ 4) 你的实验脚本（最后加载） -->
+  <script src="./experiment.js"></script>
+</body>
+</html>
