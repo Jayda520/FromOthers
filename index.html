@@ -15,38 +15,12 @@
       width:100%;
       height:100%;
       background: rgb(128,128,128);
-      overflow:hidden; /* 不要滚动条 */
     }
 
-    /* ✅ 不隐藏鼠标（并强制覆盖任何 cursor:none） */
+    /* ✅ 只做一件事：强制显示鼠标（别再动 jspsych 容器） */
     body, body * { cursor: default !important; }
     input, textarea { cursor: text !important; }
     button, select, option, label, a { cursor: pointer !important; }
-
-    /* ✅ 让 jsPsych 内容区域真正铺满屏幕（不同版本容器名都兜底） */
-    #jspsych-target,
-    .jspsych-display-element,
-    .jspsych-content-wrapper,
-    .jspsych-content{
-      width:100vw !important;
-      height:100vh !important;
-      max-width:none !important;
-      max-height:none !important;
-      margin:0 !important;
-      padding:0 !important;
-      box-sizing:border-box !important;
-      display:flex !important;
-      align-items:center !important;
-      justify-content:center !important;
-    }
-
-    /* ✅ 图片指令页如果需要全屏完整显示可用这个 class（你当前是 image plugin，不一定用得到） */
-    .fit-fullscreen-img{
-      width:100vw;
-      height:100vh;
-      object-fit:contain;
-      display:block;
-    }
   </style>
 
   <!-- jsPsych core（本地） -->
@@ -61,24 +35,22 @@
 </head>
 
 <body>
-  <!-- ✅ 如果 core 没加载，直接提示（避免白屏） -->
   <script>
-    (function(){
-      if (typeof initJsPsych !== "function"){
-        document.body.innerHTML =
-          '<div style="width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;font-family:Consolas,monospace;color:#000;">' +
-          '<div style="font-size:18px;line-height:1.6;max-width:900px;padding:24px;background:#fff;border-radius:12px;">' +
-          '<b>jsPsych core 未加载成功（initJsPsych 不存在）</b><br>' +
-          '请检查：<br>' +
-          '1) ./lib/jspsych.js 是否存在且路径正确<br>' +
-          '2) GitHub Pages 对大小写敏感：文件名必须完全一致<br>' +
-          '</div></div>';
-        throw new Error("initJsPsych is not defined. jsPsych core failed to load.");
-      }
-    })();
+    // ✅ core 检查：避免静默白/灰屏
+    if (typeof initJsPsych !== "function") {
+      document.body.innerHTML =
+        '<div style="padding:24px;font-family:Consolas,monospace;background:#fff;">' +
+        '<b>jsPsych core 未加载成功（initJsPsych 不存在）</b><br>' +
+        '请检查：./lib/jspsych.js 是否存在、路径/大小写是否正确。' +
+        '</div>';
+      throw new Error("initJsPsych missing");
+    }
+
+    // ✅ 兜底：如果你之前某处加过 hide-cursor 类，这里强制移除
+    document.documentElement.classList.remove("hide-cursor");
+    document.body.classList.remove("hide-cursor");
   </script>
 
-  <!-- ✅ 你的实验脚本（最后加载） -->
   <script src="./experiment.js"></script>
 </body>
 </html>
