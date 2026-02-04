@@ -1,111 +1,53 @@
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Emoji Social Attention (Web)</title>
-
-  <!-- jsPsych 样式（本地） -->
-  <link rel="stylesheet" href="./lib/jspsych.css">
-
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background: rgb(128,128,128);
-      overflow: hidden; /* 不要滚动条 */
-    }
-
-    /* ✅ 让 jsPsych 内容区域真正铺满屏幕（不同版本容器名略不同，全部兜底） */
-    #jspsych-target,
-    .jspsych-display-element,
-    .jspsych-content-wrapper,
-    .jspsych-content {
-      width: 100vw !important;
-      height: 100vh !important;
-      max-width: none !important;
-      max-height: none !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      box-sizing: border-box !important;
-    }
-
-    /* ✅ 居中显示（你这页表单就是靠这个居中的） */
-    .jspsych-display-element,
-    .jspsych-content-wrapper,
-    .jspsych-content {
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-    }
-
-    /* ✅ instruction 图片完整显示（不裁切） */
-    .fit-fullscreen-img {
-      width: 100vw;
-      height: 100vh;
-      object-fit: contain;  /* 完整呈现 */
-      display: block;
-    }
-
-    /* ✅✅ 关键：强制显示鼠标（覆盖任何 cursor:none） */
-    body, body * { cursor: default !important; }
-    input, textarea { cursor: text !important; }
-    button, select, option, label, a { cursor: pointer !important; }
-  </style>
-
-  <!-- jsPsych core（本地） -->
-  <script src="./lib/jspsych.js"></script>
-
-  <!-- plugins（本地，按你文件名） -->
-  <script src="./lib/plugin-preload.js"></script>
-  <script src="./lib/plugin-fullscreen.js"></script>
-  <script src="./lib/plugin-html-keyboard-response.js"></script>
-  <script src="./lib/plugin-image-keyboard-response.js"></script>
-  <script src="./lib/plugin-survey-html-form.js"></script>
-</head>
-
-<body>
-  <!-- ✅ 先做一个“是否加载成功”的硬检查：加载失败就直接显示提示 -->
-  <script>
-    (function(){
-      const ok = (typeof initJsPsych === "function");
-      if(!ok){
-        document.body.innerHTML =
-          '<div style="width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;font-family:Arial;color:#000;">' +
-          '<div style="font-size:44px;line-height:1.5;text-align:center;">' +
-          'jsPsych core 未加载成功（initJsPsych 不存在）<br>' +
-          '请检查：lib/jspsych.js 是否在仓库里、路径是否正确、Network 是否 200' +
-          '</div></div>';
-        throw new Error("initJsPsych is not defined. jsPsych core failed to load.");
+<script>
+  (function forceCursorVisible(){
+    // 1) 注入一段“最高优先级”的 CSS（含自定义SVG光标）
+    const style = document.createElement('style');
+    style.id = 'force-cursor-style';
+    style.textContent = `
+      /* ✅ 用自定义SVG光标，确保“可见” */
+      :root, html, body, body * {
+        cursor: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'>\
+<path d='M3 2 L3 26 L9 20 L14 30 L18 28 L13 18 L22 18 Z' fill='black' stroke='white' stroke-width='1'/>\
+</svg>") 1 1, auto !important;
       }
-    })();
-  </script>
+      input, textarea { cursor: text !important; }
+      button, select, option, label, a { cursor: pointer !important; }
+    `;
+    document.head.appendChild(style);
 
-  <!-- ✅✅ 鼠标显示的 JS 兜底：防止 experiment.js 里又加回 hide-cursor 或 cursor:none -->
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // 立即清理可能的隐藏光标类
-      document.body.classList.remove('hide-cursor');
+    // 2) 强制退出 pointer lock（如果某处启用了它，会导致“看不见/锁住指针”）
+    function unlockPointer(){
+      try{
+        if (document.pointerLockElement) document.exitPointerLock();
+      }catch(e){}
+    }
+
+    // 3) 强制清理任何 hide-cursor 类/样式
+    function cleanHideCursor(){
       document.documentElement.classList.remove('hide-cursor');
+      document.body && document.body.classList.remove('hide-cursor');
+      if (document.body) {
+        document.body.style.cursor = 'auto';
+      }
+    }
 
-      // 立即设置一次
-      document.body.style.cursor = 'default';
-
-      // 粗暴兜底：如果后续又被设置成 none，会被拉回来
-      // 等你确认没问题后，可以再把 interval 去掉，改成更干净的单次设置
-      setInterval(() => {
-        document.body.classList.remove('hide-cursor');
-        document.documentElement.classList.remove('hide-cursor');
-
-        // 强制把可能被某处设置的 cursor:none 拉回
-        document.body.style.cursor = 'default';
-      }, 200);
+    // 页面加载后立刻做一次
+    document.addEventListener('DOMContentLoaded', () => {
+      unlockPointer();
+      cleanHideCursor();
     });
-  </script>
 
-  <!-- 你的实验脚本（最后加载） -->
-  <script src="./experiment.js"></script>
-</body>
-</html>
+    // 进入/退出全屏时也再做一次
+    document.addEventListener('fullscreenchange', () => {
+      unlockPointer();
+      cleanHideCursor();
+    });
+
+    // 终极兜底：周期性拉回（你确认OK后我再帮你改成更干净的版本）
+    setInterval(() => {
+      unlockPointer();
+      cleanHideCursor();
+    }, 100);
+  })();
+</script>
