@@ -9,18 +9,44 @@
   <link rel="stylesheet" href="./lib/jspsych.css">
 
   <style>
-    html, body{
-      margin:0;
-      padding:0;
-      width:100%;
-      height:100%;
-      background: rgb(128,128,128);
-    }
+  html, body{
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    background: rgb(128,128,128);
+    overflow:hidden; /* ✅ 禁止滚动条 */
+  }
 
-    /* ✅ 只做一件事：强制显示鼠标（别再动 jspsych 容器） */
-    body, body * { cursor: default !important; }
-    input, textarea { cursor: text !important; }
-    button, select, option, label, a { cursor: pointer !important; }
+  /* ✅ 不隐藏鼠标 */
+  body, body * { cursor: default !important; }
+  input, textarea { cursor: text !important; }
+  button, select, option, label, a { cursor: pointer !important; }
+
+  /* ✅ jsPsych 容器铺满（不改变布局逻辑，只是消除默认 padding/margin） */
+  .jspsych-display-element{
+    width:100vw !important;
+    height:100vh !important;
+    margin:0 !important;
+    padding:0 !important;
+    background: rgb(128,128,128) !important;
+    overflow:hidden !important;
+  }
+  .jspsych-content-wrapper,
+  .jspsych-content{
+    margin:0 !important;
+    padding:0 !important;
+    max-width:none !important;
+    max-height:none !important;
+  }
+
+  /* ✅ 关键：让“指导语图片页”永远全屏完整显示 */
+  img.jspsych-image-keyboard-response-stimulus{
+    width:100vw !important;
+    height:100vh !important;
+    object-fit: contain !important; /* ✅ 完整显示，不裁切 */
+    display:block !important;
+  }
   </style>
 
   <!-- jsPsych core（本地） -->
