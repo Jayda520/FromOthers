@@ -17,7 +17,16 @@
       background: rgb(128,128,128);
       overflow: hidden; /* 不要滚动条 */
     }
-    body.hide-cursor, body.hide-cursor * { cursor: none !important; }
+
+    /* ✅ 兜底：有些 jsPsych 会把内容挂在 #jspsych-target 上 */
+    #jspsych-target{
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
 
     /* ✅ 让 jsPsych 内容区域真正铺满屏幕 */
     .jspsych-display-element,
@@ -35,7 +44,7 @@
       box-sizing: border-box !important;
     }
 
-    /* ✅ 关键：instruction 图片完整显示（不裁切） */
+    /* ✅ instruction 图片完整显示（不裁切） */
     .fit-fullscreen-img {
       width: 100vw;
       height: 100vh;
@@ -55,7 +64,8 @@
   <script src="./lib/plugin-survey-html-form.js"></script>
 </head>
 
-<body class="hide-cursor">
+<!-- ✅ 不再隐藏鼠标：去掉 class="hide-cursor" -->
+<body>
   <!-- ✅ 先做一个“是否加载成功”的硬检查：加载失败就直接显示提示 -->
   <script>
     (function(){
