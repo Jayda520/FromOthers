@@ -11,7 +11,7 @@
   };
 
   // ==============================
-  // Params
+  // Params (timing & keys)
   // ==============================
   const FONT_FAMILY =
     '"Microsoft YaHei UI","Microsoft YaHei","PingFang SC","Noto Sans CJK SC",sans-serif';
@@ -25,15 +25,15 @@
 
   const PASS_CRITERION = 0.75;
 
-  const FIX_DUR = 1000;      // ms
-  const MEM_DUR = 500;       // ms
-  const CUE_DUR = 1000;      // ms
-  const PROBE_MAX_RT = 3000; // ms
+  const FIX_DUR = 1000;      // ms  注视点
+  const MEM_DUR = 500;       // ms  记忆刺激
+  const CUE_DUR = 1000;      // ms  emoji+复杂刺激呈现
+  const PROBE_MAX_RT = 3000; // ms  探测最大反应时
 
-  const CONNECT_MIN = 5000, CONNECT_MAX = 15000; // ms
-  const SEND_MIN = 200, SEND_MAX = 1500;         // ms
+  const CONNECT_MIN = 5000, CONNECT_MAX = 15000; // ms 连接页随机
+  const SEND_MIN = 200, SEND_MAX = 1500;         // ms 发送页随机
 
-  const IMG_W = 194, IMG_H = 194;
+  const IMG_W = 194, IMG_H = 194; // 你指定的像素尺寸
 
   // ==============================
   // Stimuli pools
@@ -99,10 +99,16 @@
     return shuffle(flags);
   }
 
+  /**
+   * condition: 50% emoji / 50% complexStimulus（按 trial 级别分配）
+   * congruency: 在每个 condition 内独立分配 congRatio（默认 0.60）
+   * isSame: 50% same / 50% different
+   */
   function makeTrials(nTrials, congRatio = 0.60, condRatio = 0.50) {
     const condFlags = makeFlagsRatio(nTrials, condRatio); // 1=emoji,0=complex
     const nEmoji = condFlags.reduce((s, x) => s + x, 0);
     const nComp = nTrials - nEmoji;
+
     const congEmoji = makeFlagsRatio(nEmoji, congRatio);
     const congComp  = makeFlagsRatio(nComp, congRatio);
     const sameFlags = makeFlagsRatio(nTrials, 0.50);
@@ -111,19 +117,29 @@
     const trials = [];
 
     for (let i = 0; i < nTrials; i++) {
+      // 记忆刺激：从7张里抽2张（每个 trial 都是随机抽取）
       const memPick = shuffle(MEM_POOL).slice(0, 2);
       let memL = memPick[0], memR = memPick[1];
       if (Math.random() >= 0.5) [memL, memR] = [memR, memL];
 
+      // cue pair：7个情绪对随机选一对（每个 trial 随机）
       const [emojiPath, stimPath] = choice(CUE_PAIRS);
+
+      // cue side：emoji 在左或右随机
       const cueSide = Math.random() < 0.5 ? "left" : "right";
 
+      // condition：trial 级别按 condFlags 分配（50/50）
       const condition = condFlags[i] === 1 ? "emoji" : "complexStimulus";
+
+      // congruency：在各自 condition 内按比例分配（默认 60% congruent）
       const congFlag = (condition === "emoji") ? congEmoji[idxE++] : congComp[idxC++];
       const congruency = congFlag === 1 ? "congruent" : "incongruent";
 
       const opposite = cueSide === "left" ? "right" : "left";
 
+      // probeSide 规则（你原逻辑保留不动）：
+      // - emoji条件：congruent -> probe 在 emoji side；incongruent -> probe 在 opposite
+      // - complexStimulus条件：congruent -> probe 在 opposite；incongruent -> probe 在 cueSide
       let probeSide;
       if (condition === "emoji") {
         probeSide = (congFlag === 1) ? cueSide : opposite;
@@ -131,6 +147,7 @@
         probeSide = (congFlag === 1) ? opposite : cueSide;
       }
 
+      // same/diff（50/50）
       const isSame = sameFlags[i]; // 1=same
       let probeStim;
       if (isSame === 1) {
@@ -162,6 +179,7 @@
   // Layout HTML helpers
   // ==============================
   function makeCenteredHTML(html) {
+    // 注意：页面背景灰色由 index.html 控制更稳；这里仅保证居中与字体
     return `
       <div style="
         width:100vw;height:100vh;
@@ -175,23 +193,30 @@
       </div>`;
   }
 
+  // ✅ “+”单独注视点（PsychoPy 的 fixation）
   function fixationTrial(durationMs) {
     return {
       type: jsPsychHtmlKeyboardResponse,
-      stimulus: makeCenteredHTML(`<div style="font-size:64px;font-weight:700;">+</div>`),
+      stimulus: makeCenteredHTML(`<div style="font-size:64px;font-weight:800;line-height:1;">+</div>`),
       choices: "NO_KEYS",
       trial_duration: durationMs
     };
   }
 
+  // ✅ 三列布局：左图 + 中间“+” + 右图（同一行）
   function dualImageWithFix(memL, memR, durationMs) {
     const html = `
-      <div style="display:flex;gap:90px;justify-content:center;align-items:center;">
-        <div><img src="${memL}" width="${IMG_W}" height="${IMG_H}"></div>
-        <div><img src="${memR}" width="${IMG_W}" height="${IMG_H}"></div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:90px;">
+        <div style="width:${IMG_W}px;height:${IMG_H}px;display:flex;align-items:center;justify-content:center;">
+          <img src="${memL}" width="${IMG_W}" height="${IMG_H}">
+        </div>
+
+        <div style="font-size:64px;font-weight:800;line-height:1;">+</div>
+
+        <div style="width:${IMG_W}px;height:${IMG_H}px;display:flex;align-items:center;justify-content:center;">
+          <img src="${memR}" width="${IMG_W}" height="${IMG_H}">
+        </div>
       </div>
-      <div style="height:18px"></div>
-      <div style="font-size:64px;font-weight:700;">+</div>
     `;
     return {
       type: jsPsychHtmlKeyboardResponse,
@@ -201,17 +226,49 @@
     };
   }
 
+  // ✅ sending 动态页（随机 200–1500ms）
+  function sendingTrial() {
+    const sendDur = Math.round(randFloat(SEND_MIN, SEND_MAX));
+    const html = `<div style="font-size:44px;font-weight:800;" id="sendtxt">对方正在发送......</div>`;
+    return {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: makeCenteredHTML(html),
+      choices: "NO_KEYS",
+      trial_duration: sendDur,
+      data: { _trial_type: "sending", sendDur },
+      on_load: () => {
+        const el = document.getElementById("sendtxt");
+        if (!el) return;
+        let dots = 0;
+        const timer = setInterval(() => {
+          dots = (dots + 1) % 7;
+          el.textContent = "对方正在发送" + ".".repeat(dots);
+        }, 100);
+        window.__sendTimer = timer;
+      },
+      on_finish: () => {
+        if (window.__sendTimer) clearInterval(window.__sendTimer);
+      }
+    };
+  }
+
+  // ✅ cue 页：emoji + complex 同屏（1000ms），中间有“+”
   function cueWithFix(tr) {
     const leftImg  = tr.cueSide === "left" ? tr.emojiPath : tr.stimPath;
     const rightImg = tr.cueSide === "left" ? tr.stimPath  : tr.emojiPath;
 
     const html = `
-      <div style="display:flex;gap:90px;justify-content:center;align-items:center;">
-        <div><img src="${leftImg}" width="${IMG_W}" height="${IMG_H}"></div>
-        <div><img src="${rightImg}" width="${IMG_W}" height="${IMG_H}"></div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:90px;">
+        <div style="width:${IMG_W}px;height:${IMG_H}px;display:flex;align-items:center;justify-content:center;">
+          <img src="${leftImg}" width="${IMG_W}" height="${IMG_H}">
+        </div>
+
+        <div style="font-size:64px;font-weight:800;line-height:1;">+</div>
+
+        <div style="width:${IMG_W}px;height:${IMG_H}px;display:flex;align-items:center;justify-content:center;">
+          <img src="${rightImg}" width="${IMG_W}" height="${IMG_H}">
+        </div>
       </div>
-      <div style="height:18px"></div>
-      <div style="font-size:64px;font-weight:700;">+</div>
     `;
     return {
       type: jsPsychHtmlKeyboardResponse,
@@ -221,23 +278,28 @@
     };
   }
 
+  // ✅ probe 页：永远三列占位，probe 只出现在一侧；不显示任何按键提示文字
   function probeTrial(tr) {
-    const leftHtml = tr.probeSide === "left"
-      ? `<div><img src="${tr.probeStim}" width="${IMG_W}" height="${IMG_H}"></div>`
-      : `<div style="width:${IMG_W}px;height:${IMG_H}px;"></div>`;
-    const rightHtml = tr.probeSide === "right"
-      ? `<div><img src="${tr.probeStim}" width="${IMG_W}" height="${IMG_H}"></div>`
-      : `<div style="width:${IMG_W}px;height:${IMG_H}px;"></div>`;
+    const leftBox = tr.probeSide === "left"
+      ? `<img src="${tr.probeStim}" width="${IMG_W}" height="${IMG_H}">`
+      : ``;
+
+    const rightBox = tr.probeSide === "right"
+      ? `<img src="${tr.probeStim}" width="${IMG_W}" height="${IMG_H}">`
+      : ``;
 
     const html = `
-      <div style="display:flex;gap:90px;justify-content:center;align-items:center;">
-        ${leftHtml}
-        ${rightHtml}
+      <div style="display:flex;align-items:center;justify-content:center;gap:90px;">
+        <div style="width:${IMG_W}px;height:${IMG_H}px;display:flex;align-items:center;justify-content:center;">
+          ${leftBox}
+        </div>
+
+        <div style="font-size:64px;font-weight:800;line-height:1;">+</div>
+
+        <div style="width:${IMG_W}px;height:${IMG_H}px;display:flex;align-items:center;justify-content:center;">
+          ${rightBox}
+        </div>
       </div>
-      <div style="height:18px"></div>
-      <div style="font-size:64px;font-weight:700;">+</div>
-      <div style="height:16px"></div>
-      <div style="font-size:18px;opacity:.9">J=相同　F=不同</div>
     `;
 
     return {
@@ -277,37 +339,13 @@
     };
   }
 
-  function sendingTrial() {
-    const sendDur = Math.round(randFloat(SEND_MIN, SEND_MAX));
-    const html = `<div style="font-size:44px;font-weight:700;" id="sendtxt">对方正在发送......</div>`;
-    return {
-      type: jsPsychHtmlKeyboardResponse,
-      stimulus: makeCenteredHTML(html),
-      choices: "NO_KEYS",
-      trial_duration: sendDur,
-      data: { _trial_type: "sending", sendDur },
-      on_load: () => {
-        const el = document.getElementById("sendtxt");
-        if (!el) return;
-        let dots = 0;
-        const timer = setInterval(() => {
-          dots = (dots + 1) % 7;
-          el.textContent = "对方正在发送" + ".".repeat(dots);
-        }, 100);
-        window.__sendTimer = timer;
-      },
-      on_finish: () => {
-        if (window.__sendTimer) clearInterval(window.__sendTimer);
-      }
-    };
-  }
-
+  // ✅ connecting 动态页（随机 5–15s）
   function connectingTrial() {
     const dur = Math.round(randFloat(CONNECT_MIN, CONNECT_MAX));
     const html = `
-      <div style="font-size:44px;font-weight:700;" id="conntxt">正在与对方连接...</div>
+      <div style="font-size:44px;font-weight:800;" id="conntxt">正在与对方连接...</div>
       <div style="height:18px"></div>
-      <div style="font-size:36px;font-weight:700;">请稍候</div>
+      <div style="font-size:36px;font-weight:800;">请稍候</div>
     `;
     return {
       type: jsPsychHtmlKeyboardResponse,
@@ -331,16 +369,18 @@
     };
   }
 
+  // instruction pages：空格继续
   function instructionImageTrial(imgPath) {
     return {
       type: jsPsychImageKeyboardResponse,
       stimulus: imgPath,
-      choices: [" "], // 空格继续
+      choices: [" "],
       prompt: "",
       render_on_canvas: false
     };
   }
 
+  // practice feedback：600ms
   function feedbackTrial() {
     return {
       type: jsPsychHtmlKeyboardResponse,
@@ -348,7 +388,7 @@
         const last = jsPsych.data.get().last(1).values()[0];
         const acc = last?.acc ?? 0;
         const txt = acc === 1 ? "恭喜你答对了！" : "很遗憾，你答错了。";
-        return makeCenteredHTML(`<div style="font-size:44px;font-weight:700;">${txt}</div>`);
+        return makeCenteredHTML(`<div style="font-size:44px;font-weight:800;">${txt}</div>`);
       },
       choices: "NO_KEYS",
       trial_duration: 600
@@ -383,7 +423,7 @@
   }
 
   // ==============================
-  // Build trials timeline (唯一版本)
+  // Build trials timeline
   // ==============================
   function buildTrialsTimeline(trials, isPractice, blockName) {
     const timeline = [];
@@ -398,7 +438,7 @@
       timeline.push(probeTrial(tr));
       if (isPractice) timeline.push(feedbackTrial());
 
-      // 写入一行 ordered row
+      // write one ordered row
       timeline.push({
         type: jsPsychHtmlKeyboardResponse,
         stimulus: makeCenteredHTML(`<div style="opacity:0">.</div>`),
@@ -457,19 +497,18 @@
       downloadCSV(filename, csvText);
 
       jsPsych.displayElement.innerHTML = makeCenteredHTML(
-        `<div style="font-size:44px;font-weight:800;">实验已结束，数据文件已自动下载。</div>
+        `<div style="font-size:44px;font-weight:900;">实验已结束，数据文件已自动下载。</div>
          <div style="height:18px"></div>
-         <div style="font-size:32px;font-weight:700;">请将下载的 CSV 文件发送给实验员。</div>`
+         <div style="font-size:32px;font-weight:800;">请将下载的 CSV 文件发送给实验员。</div>`
       );
     }
   });
 
-  // global holders
   window.__rows = [];
   window.__subj = null;
 
   // ==============================
-  // Participant info form（无需鼠标版本）
+  // Participant form (keyboard-first, no mouse needed)
   // ==============================
   const subjForm = {
     type: jsPsychSurveyHtmlForm,
@@ -478,7 +517,7 @@
         <h2 style="text-align:center;margin-top:0;font-size:40px;">实验信息（请填写）</h2>
 
         <div style="text-align:center;margin:10px 0 18px 0;font-size:16px;opacity:.85;">
-          <b>无需鼠标</b>：按 <b>Tab</b> 在输入框间切换，<b>↑/↓</b> 选择下拉项，按 <b>Enter</b> 继续
+          <b>无需鼠标</b>：按 <b>Tab</b> 切换输入框，<b>↑/↓</b> 选择下拉项，按 <b>Enter</b> 继续
         </div>
 
         <p><label>被试编号/姓名（必填）：<br>
@@ -514,18 +553,14 @@
       </div>
     `,
     on_load: () => {
-      // ✅ 自动聚焦第一个输入框
       const first = document.getElementById("field_name");
       if (first) first.focus();
 
-      // ✅ Enter 继续（等价点击 submit）
-      // 注意：在 textarea 才会需要特殊处理，这里没有 textarea，所以直接提交即可
+      // Enter 提交（select 上 Enter 常用于确认选项，所以 select 时不强推提交）
       document.addEventListener("keydown", function handler(e){
         if (e.key === "Enter") {
-          // 如果当前焦点在 select 上，Enter 可能只是打开/确认选项，这时不强行提交
           const tag = (document.activeElement && document.activeElement.tagName || "").toLowerCase();
           if (tag === "select") return;
-
           const form = document.querySelector(".jspsych-content form");
           if (form) form.requestSubmit();
         }
@@ -559,7 +594,7 @@
   };
 
   // ==============================
-  // Practice loop node
+  // Practice loop node (repeat until pass)
   // ==============================
   const practiceNode = {
     timeline: [
@@ -573,14 +608,13 @@
 
       if (acc >= PASS_CRITERION) return false;
 
-      // 失败提示页（空格继续），然后回到 loop
       jsPsych.addNodeToEndOfTimeline(instructionImageTrial(INSTR.practice_fail), jsPsych.resumeExperiment);
       return true;
     }
   };
 
   // ==============================
-  // Master timeline（唯一入口）
+  // Master timeline
   // ==============================
   const masterTimeline = [];
 
