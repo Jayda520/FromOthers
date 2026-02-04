@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Emoji Social Attention (Web)</title>
 
-  <!-- ✅ 换成 unpkg：解决 jsdelivr 404 导致 initJsPsych 不存在 -->
   <link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.4/dist/jspsych.css">
 
-  <!-- 关键：全部加 defer，保证按顺序加载后再执行 -->
-  <script defer src="https://unpkg.com/jspsych@7.3.4/dist/jspsych.js"></script>
+  <!-- jsPsych core -->
+  <script src="https://unpkg.com/jspsych@7.3.4/dist/jspsych.js"></script>
 
-  <script defer src="https://unpkg.com/@jspsych/plugin-preload@1.2.1/dist/index.global.js"></script>
-  <script defer src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.1/dist/index.global.js"></script>
-  <script defer src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.2.1/dist/index.global.js"></script>
-  <script defer src="https://unpkg.com/@jspsych/plugin-image-keyboard-response@1.2.1/dist/index.global.js"></script>
-  <script defer src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.2.1/dist/index.global.js"></script>
+  <!-- Plugins (global builds) -->
+  <script src="https://unpkg.com/@jspsych/plugin-preload@1.2.1/dist/index.global.js"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-fullscreen@1.2.1/dist/index.global.js"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.2.1/dist/index.global.js"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-image-keyboard-response@1.2.1/dist/index.global.js"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.2.1/dist/index.global.js"></script>
 
   <style>
-    body { background: rgb(128,128,128); }
+    body { background: rgb(128,128,128); margin:0; }
     body.hide-cursor, body.hide-cursor * { cursor: none !important; }
 
     .center-wrap{
@@ -28,15 +28,34 @@
       user-select:none;
     }
     .bigtext{font-size:50px;white-space:pre-line;text-align:center;line-height:1.4;}
-    .fix{font-size:90px;line-height:1;margin:0;}
-    .row{display:flex;gap:260px;align-items:center;justify-content:center;}
-    .imgbox{width:194px;height:194px;display:flex;align-items:center;justify-content:center;}
-    .imgbox img{width:194px;height:194px;object-fit:contain;}
   </style>
 </head>
 
 <body class="hide-cursor">
-  <!-- experiment 也加 defer，确保等上面库都准备好 -->
-  <script defer src="./experiment.js"></script>
+  <div id="boot" class="center-wrap">
+    <div class="bigtext">加载中…</div>
+  </div>
+
+  <script>
+    // ✅ 等页面加载完成后，再检查 jsPsych 是否存在，存在才加载 experiment.js
+    window.addEventListener('load', () => {
+      const boot = document.getElementById('boot');
+
+      if (typeof initJsPsych !== 'function') {
+        boot.innerHTML = '<div class="bigtext">jsPsych 加载失败（initJsPsych 不存在）。\n请检查网络请求是否 404/blocked。\n然后刷新重试。</div>';
+        console.error('initJsPsych is not defined. jsPsych core failed to load.');
+        return;
+      }
+
+      // 动态插入 experiment.js
+      const s = document.createElement('script');
+      s.src = './experiment.js?v=' + Date.now(); // 防缓存
+      s.onload = () => boot.remove();
+      s.onerror = () => {
+        boot.innerHTML = '<div class="bigtext">experiment.js 加载失败。\n请检查文件是否存在、路径是否正确。</div>';
+      };
+      document.body.appendChild(s);
+    });
+  </script>
 </body>
 </html>
