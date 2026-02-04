@@ -322,20 +322,32 @@
         probeStim: tr.probeStim,
       },
       on_finish: (data) => {
-        const responded = data.response !== null && data.response !== undefined;
-        const respKey = responded ? String(data.response) : "";
-        const rt = responded ? data.rt : "";
+  // 1) 把 response 统一成 "j"/"f"
+  const responded = data.response !== null && data.response !== undefined;
 
-        let acc = 0;
-        if (responded) {
-          if (tr.isSame === 1 && respKey === SAME_KEY) acc = 1;
-          else if (tr.isSame === 0 && respKey === DIFF_KEY) acc = 1;
-        }
+  let respKey = "";
+  if (responded) {
+    if (typeof data.response === "number") {
+      // 有些 jsPsych 返回 keyCode：70/74...
+      respKey = jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(data.response);
+    } else {
+      // 有些返回 "j"/"f"
+      respKey = String(data.response);
+    }
+    respKey = respKey.toLowerCase();
+  }
 
-        data.respKey = respKey;
-        data.acc = acc;
-        data.rt = rt;
-      }
+  // 2) 位置绑定：isSame 是你在 makeTrials 里生成的（保持不动）
+  let acc = 0;
+  if (responded) {
+    if (tr.isSame === 1 && respKey === SAME_KEY) acc = 1;
+    else if (tr.isSame === 0 && respKey === DIFF_KEY) acc = 1;
+  }
+
+  data.respKey = respKey;  // 写回你想要的字母
+  data.acc = acc;
+  data.rt = responded ? data.rt : "";
+}
     };
   }
 
