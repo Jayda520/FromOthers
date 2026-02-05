@@ -652,6 +652,7 @@
   // Init jsPsych
   // ==============================
   const jsPsych = initJsPsych({
+  display_element: "exp-scale-wrap",
     on_finish: () => {
       downloadNow("ordered");
       jsPsych.displayElement.innerHTML = `
