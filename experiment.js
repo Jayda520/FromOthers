@@ -65,9 +65,9 @@
   // ==============================
   // Parameters (same as PsychoPy)
   // ==============================
-  const N_PRACTICE = 15;
-  const N_BLOCK1 = 80;
-  const N_BLOCK2 = 80;
+  const N_PRACTICE = 5;
+  const N_BLOCK1 = 8;
+  const N_BLOCK2 = 8;
 
   const PASS_CRITERION = 0.8;
 
